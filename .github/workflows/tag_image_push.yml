@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v5
+        with:
+          ref: 5.6.0
+
 
       - id: resolve-editions
         uses: hazelcast/docker-actions/resolve-editions@master
