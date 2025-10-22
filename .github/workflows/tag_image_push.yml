@@ -113,9 +113,9 @@ jobs:
               ;;
               "ee")
                 if [[ "${HZ_VERSION}" =~ SNAPSHOT ]]; then
-                    repo="https://repository.hazelcast.com/release"
+                    repo="https://repository.hazelcast.com/snapshot"
                 else
-                    repo="${{ vars.MAVEN_EE_RELEASE_REPO }}"
+                    repo="https://repository.hazelcast.com/release"
                 fi
               ;;
               *)
