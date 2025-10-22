@@ -146,7 +146,7 @@ jobs:
               VERSIONS+=(latest-snapshot)
           fi
           
-          TAGS_TO_PUSH=$(augment_with_suffixed_tags "${VERSIONS[*]}" "${{ matrix.variant.suffix }}" "${{ matrix.jdk }}" "${{ jobs.prepare.outputs.default-jdk }}")
+          TAGS_TO_PUSH=$(augment_with_suffixed_tags "${VERSIONS[*]}" "${{ matrix.variant.suffix }}" "${{ matrix.jdk }}" "${{ needs.prepare.outputs.default-jdk }}")
 
           # Keep a reference to _a_ tag to get the image later on
           echo "PRIMARY_TAG=${TAGS_TO_PUSH%% *}" >> ${GITHUB_ENV}
