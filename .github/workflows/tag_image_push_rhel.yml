@@ -75,6 +75,57 @@ jobs:
           username: ${{ steps.scan_registry_secrets.outputs.USERNAME }}
           password: ${{ steps.scan_registry_secrets.outputs.PASSWORD }}
 
+      - name: Install `preflight` OpenShift tool from GitHub
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          preflight: "latest"
+          source: github
+          skip_cache: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_DEV_INFRA_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_DEV_INFRA_SECRET_ACCESS_KEY }}
+          aws-region: 'us-east-1'
+
+      - name: Get Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            REDHAT_ROBOT,REDHAT/REDHAT_ISV_CONTAINERS_ROBOT
+          parse-json-secrets: true
+   
+      - name: Run preflight scan
+        run: |
+          . .github/scripts/get-tags-to-push.sh 
+          source .github/scripts/logging.functions.sh
+
+          TAGS_TO_PUSH=$(get_tags_to_push "${{ inputs.HZ_VERSION }}" "" "${{ matrix.jdk }}" "${{ inputs.DEFAULT_JDK }}" "false")
+          echo "TAGS_TO_PUSH=$TAGS_TO_PUSH"
+
+          # Add a "unique" tag to workaround RedHat bug
+          # Get the first tag
+          PRIMARY_TAG=${TAGS_TO_PUSH%% *}
+
+          PREFLIGHT_OUTPUT=$(preflight check container "${{ vars.DOCKERHUB_NAMESPACE }}/${{ vars.DOCKERHUB_EE_IMAGE_NAME }}:${PRIMARY_TAG}" \
+            --submit --pyxis-api-token=${REDHAT_ROBOT_RHEL_API_KEY} \
+            --certification-component-id=${{ steps.scan_registry_secrets.outputs.PROJECT_ID }} \
+            --docker-config ~/.docker/config.json \
+            2>&1)
+
+          echodebug "${PREFLIGHT_OUTPUT}"
+
+          IMAGE_ID=$(grep --perl-regexp --only-matching "image id is: \K[a-f0-9]+" <<< "${PREFLIGHT_OUTPUT}" || true)
+
+          if [[ -n "${IMAGE_ID}" ]]; then
+            echo "IMAGE_ID=${IMAGE_ID}" >> $GITHUB_ENV
+          else
+            echoerr "Unable to extract image ID from preflight output:"
+            echoerr "${PREFLIGHT_OUTPUT}"
+            exit 1
+          fi
+
       - name: Copy image to RedHat Container Registry
         run: |
           . .github/scripts/get-tags-to-push.sh 
@@ -108,49 +159,6 @@ jobs:
 
           # Add date as a dummy tag (e.g. 5.4.1-jdk17-20250909130347)
           copy_image ${PRIMARY_TAG} ${PRIMARY_TAG}-$(date +"%Y%m%d%H%M%S")
-
-      - name: Install `preflight` OpenShift tool from GitHub
-        uses: redhat-actions/openshift-tools-installer@v1
-        with:
-          preflight: "latest"
-          source: github
-          skip_cache: true
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          aws-access-key-id: ${{ secrets.AWS_DEV_INFRA_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_DEV_INFRA_SECRET_ACCESS_KEY }}
-          aws-region: 'us-east-1'
-
-      - name: Get Secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            REDHAT_ROBOT,REDHAT/REDHAT_ISV_CONTAINERS_ROBOT
-          parse-json-secrets: true
-   
-      - name: Run preflight scan
-        run: |
-          source .github/scripts/logging.functions.sh
-
-          PREFLIGHT_OUTPUT=$(preflight check container "${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_TAG}" \
-            --submit --pyxis-api-token=${REDHAT_ROBOT_RHEL_API_KEY} \
-            --certification-component-id=${{ steps.scan_registry_secrets.outputs.PROJECT_ID }} \
-            --docker-config ~/.docker/config.json \
-            2>&1)
-
-          echodebug "${PREFLIGHT_OUTPUT}"
-
-          IMAGE_ID=$(grep --perl-regexp --only-matching "image id is: \K[a-f0-9]+" <<< "${PREFLIGHT_OUTPUT}" || true)
-
-          if [[ -n "${IMAGE_ID}" ]]; then
-            echo "IMAGE_ID=${IMAGE_ID}" >> $GITHUB_ENV
-          else
-            echoerr "Unable to extract image ID from preflight output:"
-            echoerr "${PREFLIGHT_OUTPUT}"
-            exit 1
-          fi
 
       - name: Publish the Hazelcast Enterprise image
         run: |
