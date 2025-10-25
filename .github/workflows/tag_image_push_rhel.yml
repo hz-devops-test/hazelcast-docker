@@ -95,11 +95,6 @@ jobs:
           TAGS_TO_PUSH=$(get_tags_to_push "${{ inputs.HZ_VERSION }}" "" "${{ matrix.jdk }}" "${{ inputs.DEFAULT_JDK }}" "false")
           echo "TAGS_TO_PUSH=$TAGS_TO_PUSH"
 
-          for tag in ${TAGS_TO_PUSH[@]}
-          do
-            copy_image ${tag} ${tag}
-          done
-
           # Add a "unique" tag to workaround RedHat bug
           # Get the first tag
           PRIMARY_TAG=${TAGS_TO_PUSH%% *}
@@ -155,6 +150,21 @@ jobs:
       - name: Publish the Hazelcast Enterprise image
         run: |
           .github/scripts/publish-rhel.sh "${{ steps.scan_registry_secrets.outputs.PROJECT_ID }}" "${IMAGE_ID}" "${REDHAT_ROBOT_RHEL_API_KEY}" "${TIMEOUT_IN_MINS}"
+
+      - name: Retag image
+        run: |
+          . .github/scripts/get-tags-to-push.sh 
+
+          docker pull ${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_TAG}
+
+          TAGS_TO_PUSH=$(get_tags_to_push "${{ inputs.HZ_VERSION }}" "" "${{ matrix.jdk }}" "${{ inputs.DEFAULT_JDK }}" "false")
+          echo "TAGS_TO_PUSH=$TAGS_TO_PUSH"
+
+          for tag in ${TAGS_TO_PUSH[@]}
+          do
+            docker tag ${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_TAG} ${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${tag}
+            docker push ${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${tag}
+          done
 
       - name: Check RedHat service status
         if: failure()
