@@ -96,39 +96,32 @@ jobs:
           username: ${{ steps.scan_registry_secrets.outputs.USERNAME }}
           password: ${{ steps.scan_registry_secrets.outputs.PASSWORD }}
 
-      - name: Copy image to RedHat Container Registry
+      - name: Get tags to push
+        id: get-tags-to-push
         run: |
-          . .github/scripts/get-tags-to-push.sh 
-
-          copy_image()
-          {
-            local source_tag=$1
-            local destination_tag=$2
-
-            # Deliberately only copy a single architecture - https://github.com/hazelcast/hazelcast-docker/pull/1042#issuecomment-3141395993
-            skopeo copy \
-              --override-os linux \
-              --override-arch amd64 \
-              docker://${{ vars.DOCKERHUB_NAMESPACE }}/${{ vars.DOCKERHUB_EE_IMAGE_NAME }}:${source_tag} \
-              docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${destination_tag}
-          }
+          . .github/scripts/get-tags-to-push.sh
 
           TAGS_TO_PUSH=$(get_tags_to_push "${{ inputs.HZ_VERSION }}" "" "${{ matrix.jdk }}" "${{ inputs.DEFAULT_JDK }}" "${{ inputs.IS_LATEST_LTS }}")
-          echo "TAGS_TO_PUSH=$TAGS_TO_PUSH"
+          echo "tags=${TAGS_TO_PUSH}" >> ${GITHUB_OUTPUT}
 
-          for tag in ${TAGS_TO_PUSH[@]}
-          do
-            copy_image ${tag} ${tag}
-          done
-
+      - name: Copy image to RedHat Container Registry
+        run: |
           # Add a "unique" tag to workaround RedHat bug
           # Get the first tag
-          PRIMARY_TAG=${TAGS_TO_PUSH%% *}
-          # Keep a reference to _a_ tag to get the image later on
-          echo "PRIMARY_TAG=${PRIMARY_TAG}" >> ${GITHUB_ENV}
+          SOURCE_TAG=${TAGS_TO_PUSH%% *}
 
           # Add date as a dummy tag (e.g. 5.4.1-jdk17-20250909130347)
-          copy_image ${PRIMARY_TAG} ${PRIMARY_TAG}-$(date +"%Y%m%d%H%M%S")
+          PRIMARY_DESTINATION_TAG=${SOURCE_TAG}-$(date +"%Y%m%d%H%M%S")
+          echo "PRIMARY_DESTINATION_TAG=${PRIMARY_DESTINATION_TAG}" >> ${GITHUB_ENV}
+
+          # Deliberately only copy a single architecture - https://github.com/hazelcast/hazelcast-docker/pull/1042#issuecomment-3141395993
+          skopeo copy \
+            --override-os linux \
+            --override-arch amd64 \
+            docker://${{ vars.DOCKERHUB_NAMESPACE }}/${{ vars.DOCKERHUB_EE_IMAGE_NAME }}:${SOURCE_TAG} \
+            docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_DESTINATION_TAG}
+        env:
+          TAGS_TO_PUSH: ${{ steps.get-tags-to-push.outputs.tags }}
 
       - name: Install `preflight` OpenShift tool from GitHub
         uses: redhat-actions/openshift-tools-installer@v1
@@ -153,10 +146,21 @@ jobs:
    
       - name: Run preflight scan
         run: |
-          preflight check container "${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_TAG}" \
+          preflight check container "${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_DESTINATION_TAG}" \
             --submit --pyxis-api-token=${REDHAT_ROBOT_RHEL_API_KEY} \
             --certification-component-id=${{ steps.scan_registry_secrets.outputs.PROJECT_ID }} \
             --docker-config ~/.docker/config.json
+
+      - name: Copy image to RedHat Container Registry
+        run: |
+          for tag in ${TAGS_TO_PUSH[@]}
+          do
+            skopeo copy \
+              docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_DESTINATION_TAG} \
+              docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${tag}
+          done
+        env:
+          TAGS_TO_PUSH: ${{ steps.get-tags-to-push.outputs.tags }}
 
       - name: Check RedHat service status
         if: failure()
