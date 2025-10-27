@@ -267,6 +267,7 @@ jobs:
       - push
     uses: ./.github/workflows/tag_image_push_rhel.yml
     with:
+      IS_LATEST_LTS: false
       HZ_VERSION: ${{ needs.prepare.outputs.HZ_VERSION }}
       JDKS: ${{ needs.prepare.outputs.jdks }} 
       DEFAULT_JDK: ${{ needs.push.outputs.default_jdk }}
