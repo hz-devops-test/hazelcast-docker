@@ -106,6 +106,7 @@ jobs:
 
       - name: Copy image to RedHat Container Registry
         run: |
+          set -x
           # Add a "unique" tag to workaround RedHat bug
           # Get the first tag
           SOURCE_TAG=${TAGS_TO_PUSH%% *}
@@ -120,6 +121,18 @@ jobs:
             --override-arch amd64 \
             docker://${{ vars.DOCKERHUB_NAMESPACE }}/${{ vars.DOCKERHUB_EE_IMAGE_NAME }}:${SOURCE_TAG} \
             docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_DESTINATION_TAG}
+        env:
+          TAGS_TO_PUSH: ${{ steps.get-tags-to-push.outputs.tags }}
+
+      - name: Copy image to RedHat Container Registry
+        run: |
+          set -x
+          for tag in ${TAGS_TO_PUSH[@]}
+          do
+            skopeo copy \
+              docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_DESTINATION_TAG} \
+              docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${tag}
+          done
         env:
           TAGS_TO_PUSH: ${{ steps.get-tags-to-push.outputs.tags }}
 
@@ -150,17 +163,6 @@ jobs:
             --submit --pyxis-api-token=${REDHAT_ROBOT_RHEL_API_KEY} \
             --certification-component-id=${{ steps.scan_registry_secrets.outputs.PROJECT_ID }} \
             --docker-config ~/.docker/config.json
-
-      - name: Copy image to RedHat Container Registry
-        run: |
-          for tag in ${TAGS_TO_PUSH[@]}
-          do
-            skopeo copy \
-              docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${PRIMARY_DESTINATION_TAG} \
-              docker://${{ steps.scan_registry_secrets.outputs.SCAN_REPOSITORY }}:${tag}
-          done
-        env:
-          TAGS_TO_PUSH: ${{ steps.get-tags-to-push.outputs.tags }}
 
       - name: Check RedHat service status
         if: failure()
