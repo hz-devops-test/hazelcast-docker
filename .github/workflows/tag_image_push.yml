@@ -175,16 +175,16 @@ jobs:
           case "${{ matrix.distribution-type.label }}" in
               "oss")
                 if [[ "${HZ_VERSION}" =~ SNAPSHOT ]]; then
-                    repo="${{ vars.MAVEN_OSS_SNAPSHOT_REPO }}"
+                    repo="snapshot-internal::::https://repository.hazelcast.com/snapshot-internal"
                 else
-                    repo="${{ vars.MAVEN_OSS_RELEASE_REPO }}"
+                    repo=""
                 fi
               ;;
               "ee")
                 if [[ "${HZ_VERSION}" =~ SNAPSHOT ]]; then
-                    repo="${{ vars.MAVEN_EE_SNAPSHOT_REPO }}"
+                    repo="https://repository.hazelcast.com/snapshot"
                 else
-                    repo="${{ vars.MAVEN_EE_RELEASE_REPO }}"
+                    repo="https://repository.hazelcast.com/release"
                 fi
               ;;
               *)
