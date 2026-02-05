@@ -1,11 +1,11 @@
-name: Do release
+name: Package all images and deploy to pre-prod
 
 on:
   # For debugging only
   workflow_dispatch:
     inputs:
       VERSION:
-        description: 'The version to release'
+        description: 'The version to build'
         required: true
       RELEASE_TYPE:
         description: 'What should be built'
@@ -22,7 +22,7 @@ on:
   workflow_call:
     inputs:
       VERSION:
-        description: 'The version to release'
+        description: 'The version to build'
         required: true
         type: string
       RELEASE_TYPE:
@@ -36,17 +36,17 @@ on:
 
 jobs:
   package:
-    uses: ./.github/workflows/package.yml
+    uses: ./.github/workflows/tag_image_package.yml
     with:
-      VERSION: ${{ inputs.VERSION }}
+      SOURCE_REF: ${{ inputs.VERSION }}
       RELEASE_TYPE: ${{ inputs.RELEASE_TYPE }}
       ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
     secrets: inherit
 
-  promote:
-    uses: ./.github/workflows/promote.yml
+  package-nlc:
+    if: inputs.RELEASE_TYPE != 'OSS'
+    uses: ./.github/workflows/ee-nlc-tag-package.yml
     with:
-      VERSION: ${{ inputs.VERSION }}
-      RELEASE_TYPE: ${{ inputs.RELEASE_TYPE }}
+      SOURCE_REF: ${{ inputs.VERSION }}
       ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
     secrets: inherit
