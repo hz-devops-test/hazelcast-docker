@@ -1,53 +1,50 @@
+# syntax=docker/dockerfile:1.7
+
+# Used for image metadata only
 # Describes the version of the Dockerfile, *not* the version of the bundled Hazelcast binary as this is/can be controlled externally
 # Dockerfile needs some concept of versioning so that the release pipeline can tag/archive with an appropriate label
 ARG HZ_VERSION=5.6.1-SNAPSHOT
 
+# Build constants
 ARG HZ_HOME="/opt/hazelcast"
+ARG USER_NAME="hazelcast"
+ARG USER_GROUP="hazelcast"
+ARG JDK_VERSION="21"
 
 FROM alpine:3 AS get-distribution
 
-ARG HZ_VERSION
 ARG HZ_HOME
-# Optional, defaults to latest released version
-ARG HAZELCAST_ZIP_URL=""
 ARG HAZELCAST_ZIP_FILE_NAME="hazelcast-distribution.zip"
 
-ENV MAVEN_ARTIFACT_ID=hazelcast-distribution \
-    MAVEN_REPO=https://repo.maven.apache.org/maven2
+# Expects distribution ZIP to be on the local filesystem within the build context
+COPY ${HAZELCAST_ZIP_FILE_NAME} /tmp/
 
-COPY hazelcast-*.zip maven.functions.sh ${HZ_HOME}/
-
-RUN echo "Installing new packages" \
-    && apk add --no-cache curl libxml2-utils unzip \
-    && if [[ ! -f ${HZ_HOME}/${HAZELCAST_ZIP_FILE_NAME} ]]; then \
-       if [ -z ${HAZELCAST_ZIP_URL} ]; then \
-            source ${HZ_HOME}/maven.functions.sh; \
-            HAZELCAST_ZIP_URL="$(get_latest_url_without_extension com.hazelcast ${MAVEN_ARTIFACT_ID} ${MAVEN_REPO})".zip; \
-       fi; \
-       echo "Downloading Hazelcast distribution zip from ${HAZELCAST_ZIP_URL}..."; \
-       mkdir --parents ${HZ_HOME}; \
-       curl --fail --silent --show-error --location ${HAZELCAST_ZIP_URL} --output ${HZ_HOME}/${HAZELCAST_ZIP_FILE_NAME}; \
-    else \
-           echo "Using local ${HAZELCAST_ZIP_FILE_NAME}"; \
-    fi \
-    && unzip -qq ${HZ_HOME}/${HAZELCAST_ZIP_FILE_NAME} 'hazelcast-*/**' -d ${HZ_HOME}/tmp/ \
+RUN mkdir -p /build_root${HZ_HOME} \
+    && apk add --no-cache unzip \
+    && unzip -qq /tmp/${HAZELCAST_ZIP_FILE_NAME} -d /tmp/hz \
     # Distribution ZIP structure is a single folder (e.g. "hazelcast-5.4.0-slim") containing the content
     # Move all the content up a level so that the path contains no version and is constant
-    && mv ${HZ_HOME}/tmp/*/* ${HZ_HOME}/ \
-    && echo "Removing unnecessary packages and redundant files/folders" \
-    && apk del libxml2-utils unzip \
-    && rm -rf /var/cache/apk/* ${HZ_HOME}/maven.functions.sh ${HZ_HOME}/${HAZELCAST_ZIP_FILE_NAME} ${HZ_HOME}/tmp
+    && mv /tmp/hz/*/* /build_root${HZ_HOME}/ \
+    && apk del unzip \
+    && rm -rf /tmp/* \
+    && echo "Setting Pardot ID to 'docker'" \
+    && echo 'hazelcastDownloadId=docker' > "/build_root${HZ_HOME}/lib/hazelcast-download.properties" \
+    && echo "Granting read permission to /build_root${HZ_HOME}" \
+    && chmod -R +r /build_root${HZ_HOME} \
+    && echo "Grant execute permission to scripts in order to address the issue of permissions not being accurately propagated on Windows OS" \
+    && chmod +x /build_root${HZ_HOME}/bin/*
 
+COPY log4j2.properties log4j2-json.properties jmx_agent_config.yaml /build_root${HZ_HOME}/config/
+
+# Normalize timestamps for reproducible layer
+RUN find /build_root -exec touch -h -t 202307011700.00 {} +
 
 FROM alpine:3
 
-ARG HZ_VERSION
-
-# Build constants
 ARG HZ_HOME
-ARG JDK_VERSION="21"
-# Optional, defaults to latest released version
-ARG HAZELCAST_ZIP_URL=""
+ARG USER_NAME
+ARG USER_GROUP
+ARG JDK_VERSION
 
 # Runtime variables
 ENV HZ_HOME="${HZ_HOME}" \
@@ -64,30 +61,27 @@ ENV HZ_HOME="${HZ_HOME}" \
 # Expose port
 EXPOSE 5701
 
-COPY --from=get-distribution ${HZ_HOME} ${HZ_HOME}/
-COPY *.jar maven.functions.sh ${HZ_HOME}/
+COPY --link --from=get-distribution /build_root/ /
 
 # Install
-RUN echo "Upgrading APK packages" \
+RUN echo "Upgrading packages" \
     && apk upgrade --no-cache \
-    && echo "Installing new APK packages" \
-    && apk add --no-cache openjdk${JDK_VERSION}-jre-headless bash curl libxml2-utils zip unzip \
-    && echo "Setting Pardot ID to 'docker'" \
-    && echo 'hazelcastDownloadId=docker' > "${HZ_HOME}/lib/hazelcast-download.properties" \
-    && echo "Granting read permission to ${HZ_HOME}" \
-    && chmod -R +r ${HZ_HOME} \
-    && echo "Cleaning APK packages and redundant files/folders" \
-    && apk del libxml2-utils zip unzip \
-    && rm -rf /var/cache/apk/* ${HZ_HOME}/maven.functions.sh ${HZ_HOME}/hazelcast-distribution.zip ${HZ_HOME}/tmp \
-    # Grant execute permission to scripts in order to address the issue of permissions not being accurately propagated on Windows OS
-    && chmod +x ${HZ_HOME}/bin/*
-
-COPY log4j2.properties log4j2-json.properties jmx_agent_config.yaml ${HZ_HOME}/config/
+    && echo "Installing new packages" \
+    && apk add --no-cache \
+        bash \
+        curl \
+        openjdk${JDK_VERSION}-jre-headless \
+    && echo "Removing unnecessary packages and redundant files/folders" \
+    && rm -rf /var/cache/apk/* 
 
 WORKDIR ${HZ_HOME}
 
-RUN addgroup -S hazelcast && adduser -S hazelcast -G hazelcast
-USER hazelcast
+RUN echo "Adding non-root user" \
+    && addgroup -S ${USER_GROUP} \
+    && adduser -S ${USER_NAME} -G ${USER_GROUP}
+USER ${USER_NAME}
+
+HEALTHCHECK CMD ["hz-healthcheck"]
 
 # Start Hazelcast server
 CMD ["hz", "start"]
