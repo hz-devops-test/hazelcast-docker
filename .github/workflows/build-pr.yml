@@ -40,3 +40,9 @@ jobs:
       RELEASE_TYPE: ALL
       DRY_RUN: true
     secrets: inherit
+
+  verify-reproducibility:
+    name: Verify layer reproducibility
+    uses: ./.github/workflows/verify-layer-reproducibility.yml
+    with:
+      SOURCE_REF: ${{ github.ref }}
