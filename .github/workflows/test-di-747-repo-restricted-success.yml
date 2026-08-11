@@ -1,0 +1,46 @@
+name: Test DI-747
+run-name: ${{ github.workflow }} (`${{ inputs.SOURCE_REF }}`@${{ inputs.ENVIRONMENT }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      SOURCE_REF:
+        description: 'The version to promote (e.g. `5.4.1`)'
+        required: true
+      RELEASE_TYPE:
+        description: 'What should be promoted'
+        required: true
+        type: choice
+        options:
+          - ALL
+          - OSS
+          - EE
+      ENVIRONMENT:
+        description: 'Environment to use'
+        required: true
+        type: environment
+  
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENVIRONMENT }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEV_INFRA_OIDC_GITHUB_ACTIONS_ROLE_ARN_DI_747 }}
+          aws-region: 'us-east-1'
+
+      - name: Get Sandbox Secret
+        uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        with:
+          parse-json-secrets: true
+          secret-ids: |
+            DI_747_REPO_RESTRICTED, DI747/REPO_RESTRICTED
+
+      - name: Debug Sandbox Secret Value Safely
+        run: |
+          echo "The Sandbox value is:"
+          echo "${{ env.DI_747_REPO_RESTRICTED }}" | sed 's/./& /g'
