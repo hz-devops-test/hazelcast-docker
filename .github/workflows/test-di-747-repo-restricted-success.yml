@@ -6,14 +6,14 @@ on:
     inputs:
       SOURCE_REF:
         description: 'The version to promote (e.g. `5.4.1`)'
-        required: true
+        required: false
       RELEASE_TYPE:
         description: 'What should be promoted'
         required: true
         type: choice
         options:
           - ALL
-          - OSS
+          - OSSe
           - EE
       ENVIRONMENT:
         description: 'Environment to use'
@@ -27,18 +27,46 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ vars.AWS_DEV_INFRA_OIDC_GITHUB_ACTIONS_ROLE_ARN_DI_747 }}
+      #     aws-region: 'us-east-1'
+      #     role-session-name: ${{ github.event.repository.name }}
+
+
+      - name: Authenticate with AWS via Cognito
+        uses: catnekaise/cognito-idpool-auth@v1
         with:
-          role-to-assume: ${{ vars.AWS_DEV_INFRA_OIDC_GITHUB_ACTIONS_ROLE_ARN_DI_747 }}
+          auth-flow: 'enhanced'
+          cognito-identity-pool-id: 'us-east-1:dfe42e09-1679-4e9b-a57a-de7aaba6d061'
+          aws-account-id: '789736802331'
+          #role-arn: 'arn:aws:iam::789736802331:role/service-role/oidc-github-actions-sandbox-DI-747-COGNITO'
           aws-region: 'us-east-1'
+          set-in-environment: true
+          audience: 'sts.amazonaws.com'
+
+      # - name: Dump AWS Session Debug Data
+      #   run: |
+      #     echo "=== AWS Caller Identity ==="
+      #     aws sts get-caller-identity
+
+      # - name: Debug OIDC Claims
+      #   uses: steve-todorov/oidc-debugger-action@v1
+      #   with:
+      #     audience: '${{ github.server_url }}/${{ github.repository }}'
 
       - name: Get Sandbox Secret
         uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        env:
+          # Injects the expected environment variables into the Node.js context
+          AWS_REGION: 'us-east-1'
+          AWS_DEFAULT_REGION: 'us-east-1'
         with:
           parse-json-secrets: true
           secret-ids: |
             DI_747_REPO_RESTRICTED, DI747/REPO_RESTRICTED
+
 
       - name: Debug Sandbox Secret Value Safely
         run: |
