@@ -1,0 +1,55 @@
+name: Test DI-747
+run-name: ${{ github.workflow }} (`${{ inputs.SOURCE_REF }}`@${{ inputs.ENVIRONMENT }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      SOURCE_REF:
+        description: 'The version to promote (e.g. `5.4.1`)'
+        required: false
+      RELEASE_TYPE:
+        description: 'What should be promoted'
+        required: true
+        type: choice
+        options:
+          - ALL
+          - OSS
+          - EE
+      ENVIRONMENT:
+        description: 'Environment to use'
+        required: true
+        type: environment
+  
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENVIRONMENT }}
+    permissions:
+      id-token: write
+    steps:
+      
+      - name: Step 1 - OIDC Gateway Authentication
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: 'us-east-1'
+          role-to-assume: arn:aws:iam::789736802331:role/oidc-github-actions-sandbox-DI-747
+            
+      - name: Step 2 - Chain Role and Inject Tags
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: 'us-east-1'
+          role-to-assume: arn:aws:iam::789736802331:role/oidc-github-actions-sandbox-DI-747-execution-role
+          role-chaining: true
+          custom-tags: '{ "Environment": "${{ inputs.ENVIRONMENT }}" }'
+
+      - name: Get Sandbox Secret
+        uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        with:
+          parse-json-secrets: true
+          secret-ids: |
+            DI_747_SANDBOX, DI747/REPO_RESTRICTED_WITH_AWS_CONFIGURE
+
+      - name: Debug Sandbox Secret Value Safely
+        run: |
+          echo "The Sandbox value is:"
+          echo "${{ env.DI_747_SANDBOX_NAME }}" | sed 's/./& /g'
